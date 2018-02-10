@@ -1,6 +1,8 @@
-function [ elastic_f ] = compute_elastic_map( F, V, g_on_vertices)
+function [ elastic_f ] = compute_elastic_map( F, V, g_on_vertices, conformal )
 % Compute the elastic map that minimizes elastic energy from the stress
 % tensor g, using the theory of Weierstrass representation
+% If conformal = true, returns an elastic map that is also conformal,
+% otherwise the returned elastic map may not be conformal (holomorphic).
 
 % circshift the vertices in each face to have a row for each edge
 E = expand_faces_to_edges(F);
@@ -22,7 +24,12 @@ check_holomorphicity(F, V, H);
 elastic_f = 0.5 * (G + H ./ conj(h_on_vertices));
 %disp(size(elastic_f));
 
-%[elastic_fz, elastic_fzbar] = decompose_df(F, V, elastic_f);
+if(conformal)
+    [fz, fz_bar] = decompose_df(F, V, elastic_f);
+    fz_on_vertices = dual_map_on_vertices(F, V, fz);
+    elastic_f = find_antiderivative(F, V, E, cotan, L, fz_on_vertices);
+end
+    
 %recovered_g = 2 * elastic_fz - elastic_fz ./ abs(elastic_fz);
 %disp('Relative error in recovered stress:');
 %disp(norm(g-recovered_g) / norm(g));
@@ -33,9 +40,9 @@ function [G] = find_antiderivative(F, V, E, cotan, L, g_on_vertices)
 gradGreal = [real(g_on_vertices) -imag(g_on_vertices)];
 gradGimag = [imag(g_on_vertices) real(g_on_vertices)];
 divdGreal = compute_divergence(F, V, E, cotan, ...
-    0.5*gradGreal(E(:,1),:)+0.5*gradGreal(E(:,2),:));
+    0.5*gradGreal(E(:,1),:)+0.5*gradGreal(E(:,2),:), false);
 divdGimag = compute_divergence(F, V, E, cotan, ...
-    0.5*gradGimag(E(:,1),:)+0.5*gradGimag(E(:,2),:));
+    0.5*gradGimag(E(:,1),:)+0.5*gradGimag(E(:,2),:), false);
 Greal = solve_laplacian(L, divdGreal);
 Gimag = solve_laplacian(L, divdGimag);
 %disp(sqrt(mean((gradGreal - dual_map_on_vertices(F, V, compute_df(F, V, Greal))) .^ 2)));

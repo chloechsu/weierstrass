@@ -82,8 +82,11 @@ function varargout = simple_deform(varargin)
   show_weight_visualization = false;
   % show stress tensor off to right
   show_stress_tensor = false;
-  % show the elastic deformantion computed from stress tensor
-  show_elastic_map = true;
+  % show divR and laplacian of f to verify euler lagrange equation
+  show_euler_lagrange = false;
+  % require that the elastic map is conformal (only applicable to
+  % Weierstrass)
+  add_conformal_constraint = false;
   % use linear blend skinning to deform (other option is DQLBS)
   interp_mode = 'LBS';
   % use automatically computed dof at point handles
@@ -106,6 +109,10 @@ function varargout = simple_deform(varargin)
       cauchy_green_method = true;
     elseif(strcmp(varargin{ii},'Weierstrass'))
       weierstrass_method = true;
+    elseif(strcmp(varargin{ii}, 'ShowEulerLagrangeVerification'))
+      show_euler_lagrange = true;
+    elseif(strcmp(varargin{ii}, 'AddConformalConstraint'))
+      add_conformal_constraint = true;
     elseif(strcmp(varargin{ii},'InterpMode'))
       ii = ii + 1;
       assert(ii<=size(varargin,2));
@@ -173,15 +180,15 @@ function varargout = simple_deform(varargin)
   % Set up figure with enough subplots for any additional visualizations
   % clear current figure
   clf
-  number_of_subplots = 1;
+  number_of_subplots = 2;
   current_subplot = 1;
   if(show_weight_visualization)
     number_of_subplots = number_of_subplots +1;
   end
-  if(show_elastic_map)
-    number_of_subplots = number_of_subplots +1;
-  end
   if(show_stress_tensor)
+    number_of_subplots = number_of_subplots +2;
+  end
+  if(show_euler_lagrange)
     number_of_subplots = number_of_subplots +2;
   end
   
@@ -325,6 +332,47 @@ function varargout = simple_deform(varargin)
     % plot the original mesh
     g_Deform(gid).stress_imag = ...
       trisurf(F,V(:,1),V(:,2),zeros(size(V,1),1), 'FaceColor','flat', ...
+      'CDataMapping', 'scaled');
+    %ax2.set('CLim', [-0.1,0.1]);
+    view(2);
+    hold off
+    axis equal
+    axis manual
+    colormap jet
+    colorbar
+  end
+  
+  % set up plots to show divR and laplacian of f
+  if(show_euler_lagrange) 
+    % plot the real part
+    current_subplot = current_subplot + 1;
+    assert(all(size(CW) == size(W)));
+    % subplot for the real part of stress tensor
+    ax3 = subplot(2,ceil(number_of_subplots/2),current_subplot);
+    title('abs(div R)');
+    hold on;
+    % plot the original mesh
+    g_Deform(gid).divR = ...
+      trisurf(F,V(:,1),V(:,2),zeros(size(V,1),1), 'FaceColor','interp', ...
+      'CDataMapping', 'scaled');
+    %ax1.set('CLim', [-2,2]);
+    view(2);
+    axis equal
+    axis manual
+    hold off;
+    colormap jet
+    colorbar
+    
+    % plot the imaginary part
+    current_subplot = current_subplot + 1;
+    assert(all(size(CW) == size(W)));
+    % subplot for the imaginary part of stress tensor
+    ax4 = subplot(2,ceil(number_of_subplots/2),current_subplot);
+    title('abs(Laplacian of f) on the interior');
+    hold on;
+    % plot the original mesh
+    g_Deform(gid).laplacian_of_f = ...
+      trisurf(F,V(:,1),V(:,2),zeros(size(V,1),1), 'FaceColor','interp', ...
       'CDataMapping', 'scaled');
     %ax2.set('CLim', [-0.1,0.1]);
     view(2);
@@ -504,7 +552,7 @@ function varargout = simple_deform(varargin)
         check_holomorphicity(F, V, g);
         
         % compute elastic map from stress tensor
-        f = compute_elastic_map(F, V, g);
+        f = compute_elastic_map(F, V, g, add_conformal_constraint);
         new_V = [real(f)+V(1,1) imag(f)+V(1,2)];
         
         disp('Verifying holomorphicity for f from Weierstrass method...')
@@ -533,8 +581,12 @@ function varargout = simple_deform(varargin)
     set(g_Deform(gid).elastic_energy_text,'String',txt);
       
     disp('Verifying Euler-Lagrange equation...')
-    euler_lagrange_error = verify_euler_lagrange_eq(F, V, f);
-    set(g_Deform(gid).tsh,'FaceVertexCData',euler_lagrange_error);
+    if(show_euler_lagrange)
+        [divR, laplacian_of_f, euler_lagrange_error] = verify_euler_lagrange_eq(F, V, f);
+        set(g_Deform(gid).tsh,'FaceVertexCData',euler_lagrange_error);
+        set(g_Deform(gid).divR,'FaceVertexCData',abs(divR));
+        set(g_Deform(gid).laplacian_of_f,'FaceVertexCData',abs(laplacian_of_f));
+    end
 
     % Update plots for stress tensor
     if(show_stress_tensor)
