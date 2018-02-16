@@ -312,7 +312,7 @@ function varargout = simple_deform(varargin)
     hold on;
     % plot the original mesh
     g_Deform(gid).stress_real = ...
-      trisurf(F,V(:,1),V(:,2),zeros(size(V,1),1), 'FaceColor','flat', ...
+      trisurf(F,V(:,1),V(:,2),zeros(size(V,1),1), 'FaceColor','interp', ...
       'CDataMapping', 'scaled');
     %ax1.set('CLim', [-2,2]);
     view(2);
@@ -331,7 +331,7 @@ function varargout = simple_deform(varargin)
     hold on;
     % plot the original mesh
     g_Deform(gid).stress_imag = ...
-      trisurf(F,V(:,1),V(:,2),zeros(size(V,1),1), 'FaceColor','flat', ...
+      trisurf(F,V(:,1),V(:,2),zeros(size(V,1),1), 'FaceColor','interp', ...
       'CDataMapping', 'scaled');
     %ax2.set('CLim', [-0.1,0.1]);
     view(2);
@@ -580,8 +580,8 @@ function varargout = simple_deform(varargin)
         num2str(elastic_energy(V, F, fz, fzbar))]);
     set(g_Deform(gid).elastic_energy_text,'String',txt);
       
-    disp('Verifying Euler-Lagrange equation...')
     if(show_euler_lagrange)
+        disp('Verifying Euler-Lagrange equation...')
         [divR, laplacian_of_f, euler_lagrange_error] = verify_euler_lagrange_eq(F, V, f);
         set(g_Deform(gid).tsh,'FaceVertexCData',euler_lagrange_error);
         set(g_Deform(gid).divR,'FaceVertexCData',abs(divR));
