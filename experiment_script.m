@@ -10,7 +10,7 @@
 % NOTE: Please contact Alec Jacobson, jacobson@inf.ethz.ch before
 % using this code outside of an informal setting, i.e. for comparisons.
 
-%{
+%
 results = [];
 for i=1:7
     mesh_source = ...
@@ -58,7 +58,7 @@ for i=1:6
     results = [results; experiment(mesh_source, C, new_C)];
 end
 csvwrite('L_results_center_extend.csv',results); 
-%}
+%
 
 %
 results = [];
@@ -74,6 +74,17 @@ for i=1:6
 end
 csvwrite('L_results_center_shrink.csv',results); 
 %
+
+results = [];
+for i=1:6
+    disp(i);
+    mesh_source = ...
+        strcat(['annulus_',num2str(2^i), 'x', num2str(2^i), '.obj']);
+    C = [-1.05,-1.05; 1.05,-1.05; 1.05,1.05; -1.05,1.05];
+    new_C = [-1.05,-1.05; 1.05,-1.05; -0.5,-0.55; -1.05,1.05];
+    results = [results; experiment(mesh_source, C, new_C)];
+end
+csvwrite('annulus_squish_corner.csv',results); 
 
 function stats_comparison = experiment(mesh_source, C, new_C)
 

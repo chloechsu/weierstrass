@@ -272,7 +272,7 @@ function varargout = simple_deform(varargin)
     current_subplot = current_subplot + 1;
     % subplot for weight visualization
     subplot(2,ceil(number_of_subplots/2),current_subplot);
-    title('Deformed Mesh (w/ error in g)');
+    title('Deformed Mesh');
     hold on;
     % plot the original mesh
     g_Deform(gid).deformed_map = ...
