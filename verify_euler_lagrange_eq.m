@@ -1,4 +1,4 @@
-function [divR, deltaf, error] = verify_euler_lagrange_eq(F, V, f)
+function [divR, deltaf, error, interior_rmse] = verify_euler_lagrange_eq(F, V, f)
 E = expand_faces_to_edges(F);
 cotan = compute_cotan(V, E);
 L = compute_laplacian(F, V, E, cotan);
@@ -52,6 +52,7 @@ disp(['Total l2 norm of laplacian of f in the interior: ', num2str(sqrt(sum(abs(
 %disp(['Median absolute error: ', num2str(median_abs)]);
 
 error = abs(divR - deltaf);
+interior_rmse = sqrt(mean(error(interior) .^ 2));
 
 % force the laplacian of f to be 0 for display purpose on the boundary
 deltaf(boundary_vertices) = 0;

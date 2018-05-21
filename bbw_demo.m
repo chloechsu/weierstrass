@@ -16,8 +16,9 @@
 
 % input mesh source: *.obj, *.off, *.poly, or *.png
 %mesh_source = 'woody.obj';
-%mesh_source = 'square128x128.obj';
-mesh_source = 'L-shape_20x20.obj';
+%mesh_source = 'square32x32.obj';
+mesh_source = 'L-shape_40x40.obj';
+%mesh_source = 'annulus_32x32.obj';
 % should input mesh be upsampled
 upsample_mesh = false;
 
@@ -112,10 +113,16 @@ W = cauchy_green_weights(V,C);
 close();
 %figure('Name', 'Cauchy Green Coordinates');
 %simple_deform(V,F,C,W,'CauchyGreen','ShowStressTensor');
-figure('Name', 'Weierstrass Representations, not conformal');
-simple_deform(V,F,C,W,'Weierstrass','ShowEulerLagrangeVerification');
-figure('Name', 'Weierstrass Representations, conformal');
-simple_deform(V,F,C,W,'Weierstrass','ShowEulerLagrangeVerification','AddConformalConstraint');
+%figure('Name', 'Weierstrass Representations, not conformal');
+%simple_deform(V,F,C,W,'Weierstrass','ShowEulerLagrangeVerification');
+%figure('Name', 'Weierstrass Representations, conformal');
+%simple_deform(V,F,C,W,'Weierstrass','AddConformalConstraint','ShowEulerLagrangeVerification');
+%figure('Name', 'Weierstrass Representation');
+%simple_deform(V,F,C,W,'Weierstrass','ShowEulerLagrangeVerification');
+figure('Name', 'Reverse Polar Decomposition');
+simple_deform(V,F,C,W,'Weierstrass','WeierstrassPolar','ShowEulerLagrangeVerification');
+%figure('Name', 'Weierstrass Representations, not conformal');
+%simple_deform(V,F,C,W,'Weierstrass','ShowStressTensor');
 % interactively deform point controls
 %simple_deform(V,F,C,W)
 

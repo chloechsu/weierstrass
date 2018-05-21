@@ -77,6 +77,7 @@ function varargout = simple_deform(varargin)
   WVW = W;
   % using Cauchy Green interpolation or Weierstrass representation method
   weierstrass_method = false;
+  weierstrass_polar_method = false;
   cauchy_green_method = false;
   % show weight visualization off to right
   show_weight_visualization = false;
@@ -87,6 +88,7 @@ function varargout = simple_deform(varargin)
   % require that the elastic map is conformal (only applicable to
   % Weierstrass)
   add_conformal_constraint = false;
+  show_fz = false;
   % use linear blend skinning to deform (other option is DQLBS)
   interp_mode = 'LBS';
   % use automatically computed dof at point handles
@@ -105,10 +107,14 @@ function varargout = simple_deform(varargin)
       show_weight_visualization = true;
     elseif(strcmp(varargin{ii},'ShowStressTensor'))
       show_stress_tensor = true;
+    elseif(strcmp(varargin{ii},'Showfz'))
+      show_fz = true;
     elseif(strcmp(varargin{ii},'CauchyGreen'))
       cauchy_green_method = true;
     elseif(strcmp(varargin{ii},'Weierstrass'))
       weierstrass_method = true;
+    elseif(strcmp(varargin{ii},'WeierstrassPolar'))
+      weierstrass_polar_method = true;
     elseif(strcmp(varargin{ii}, 'ShowEulerLagrangeVerification'))
       show_euler_lagrange = true;
     elseif(strcmp(varargin{ii}, 'AddConformalConstraint'))
@@ -191,6 +197,9 @@ function varargout = simple_deform(varargin)
   if(show_euler_lagrange)
     number_of_subplots = number_of_subplots +2;
   end
+  if(show_fz)
+    number_of_subplots = number_of_subplots +1;
+  end
   
   if(number_of_subplots>1)
     ax1 = subplot(2,ceil(number_of_subplots/2),1);
@@ -198,7 +207,7 @@ function varargout = simple_deform(varargin)
 
   % plot the original mesh
   g_Deform(gid).tsh = trisurf(F,V(:,1),V(:,2),zeros(size(V,1),1), ...
-    'FaceColor','interp', 'CDataMapping', 'scaled');
+    'FaceColor','flat', 'CDataMapping', 'scaled');
   colormap jet
   colorbar
 
@@ -277,9 +286,28 @@ function varargout = simple_deform(varargin)
     axis auto
     colormap jet
     colorbar
-
-    % display the elastic energy in the deformation
-    g_Deform(gid).elastic_energy_text = xlabel('Elastic energy: 0');
+    
+    if (weierstrass_method)
+    % display holomorphicity error for each function
+    g_Deform(gid).g_error_text = uicontrol('Style','text',...
+        'Position',[10 30 100 30],...
+        'String','g error: 0');
+    %g_Deform(gid).f_error_text = uicontrol('Style','text',...
+    %    'Position',[120 30 100 30],...
+    %    'String','f error: 0');
+    g_Deform(gid).recovered_g_error_text = uicontrol('Style','text',...
+        'Position',[120 30 120 30],...
+        'String','recovered g conformal error: 0');
+    g_Deform(gid).g_diff_text = uicontrol('Style','text',...
+        'Position',[240 30 80 30],...
+        'String','g diff: 0');
+    g_Deform(gid).elasticity_error = uicontrol('Style','text',...
+        'Position',[380 30 80 30],...
+        'String','elasticity error: 0');
+    g_Deform(gid).elastic_energy_text = uicontrol('Style','text',...
+        'Position',[480 30 80 30],...
+        'String','elastic energy: 0');
+    end
     
     hold off;
   end 
@@ -341,6 +369,7 @@ function varargout = simple_deform(varargin)
     colormap jet
     colorbar
   end
+
   
   % set up plots to show divR and laplacian of f
   if(show_euler_lagrange) 
@@ -348,7 +377,7 @@ function varargout = simple_deform(varargin)
     current_subplot = current_subplot + 1;
     assert(all(size(CW) == size(W)));
     % subplot for the real part of stress tensor
-    ax3 = subplot(2,ceil(number_of_subplots/2),current_subplot);
+    ax5 = subplot(2,ceil(number_of_subplots/2),current_subplot);
     title('abs(div R)');
     hold on;
     % plot the original mesh
@@ -379,6 +408,26 @@ function varargout = simple_deform(varargin)
     hold off
     axis equal
     axis manual
+    colormap jet
+    colorbar
+  end
+    
+  if(show_fz)
+    current_subplot = current_subplot + 1;
+    assert(all(size(CW) == size(W)));
+    % subplot for the real part of stress tensor
+    ax6 = subplot(2,ceil(number_of_subplots/2),current_subplot);
+    title('|fz|');
+    hold on;
+    % plot the original mesh
+    g_Deform(gid).fz = ...
+      trisurf(F,V(:,1),V(:,2),zeros(size(V,1),1), 'FaceColor','flat', ...
+      'CDataMapping', 'scaled');
+    %ax1.set('CLim', [-2,2]);
+    view(2);
+    axis equal
+    axis manual
+    hold off;
     colormap jet
     colorbar
   end
@@ -541,57 +590,83 @@ function varargout = simple_deform(varargin)
     if(cauchy_green_method)
         % Cauchy Green coordinates
         new_V = cauchy_green_interpolate(V,TR,W);
-        f = complex(new_V(:,1), new_V(:,2));
+        %f = complex(new_V(:,1), new_V(:,2));
+        f = W * complex(T(:,1),T(:,2));
         %tt = @() cauchy_green_interpolate(V,TR,W);
         %disp(['cauchy green ', num2str(timeit(tt))]);
     end
     
     if(weierstrass_method)
-        fprintf('\nUsing Weierstrass method...')
-        disp('Verifying holomorphicity for g...')
-        check_holomorphicity(F, V, g);
-        
         % compute elastic map from stress tensor
-        f = compute_elastic_map(F, V, g, add_conformal_constraint);
+        if(weierstrass_polar_method)
+            [f, branch_points] = compute_elastic_map_polar(F, V, g);
+        else
+            [f, branch_points] = compute_elastic_map(F, V, g, add_conformal_constraint);
+        end
+        
         new_V = [real(f)+V(1,1) imag(f)+V(1,2)];
         
-        disp('Verifying holomorphicity for f from Weierstrass method...')
-        check_holomorphicity(F, V, f);
-        
-        %tt1 = @() compute_holomorphic_stress(F, V, W, C, T);
-        %tt2 = @() compute_elastic_map(F, V, g);
-        %disp(['weierstrass ', num2str(timeit(tt1)), ' ', num2str(timeit(tt2))]);
+        [fz, fzbar] = decompose_df(F, V, f);
+        g_recovered = dual_map_on_vertices(F, V, 2 * fz - fz ./ abs(fz));
+       
+        % display holomorphicity error for each function
+        g_Deform(gid).g_error_text.String = ...
+            strcat(['g conformal error: ' num2str(check_holomorphicity(F, V, g))]);
+        %g_Deform(gid).f_error_text.String = ...
+        %    strcat(['f conformal error: ' num2str(check_holomorphicity(F, V, f))]);
+        g_Deform(gid).recovered_g_error_text.String = ...
+            strcat(['recovered g conformal error: ' num2str(check_holomorphicity(F, V, g_recovered))]);
+        g_diff_full = g - g_recovered;
+        g_diff = sqrt(mean(abs(g - g_recovered) .^ 2));
+        g_Deform(gid).g_diff_text.String = ...
+            strcat(['g diff: ' num2str(g_diff)]); 
     end
     
     % update mesh positions
     % set(g_Deform(gid).tsh,'Vertices',new_V);
     
+    if size(ax1.Children,1) > 3
+        delete(ax1.Children(1:size(ax1.Children,1)-3)); 
+    end
+    if(weierstrass_method)
+        hold on
+        for i=1:size(branch_points,1)
+            plot(ax1, branch_points(i,1), branch_points(i,2), 'r*');
+        end
+        hold off
+    end
+        
     % update elastic map mesh positions
     set(g_Deform(gid).deformed_map,'Vertices',new_V);
     
     % update elastic energy text
-    [fz, fzbar] = decompose_df(F, V, f);
-    g_recovered = dual_map_on_vertices(F, V, 2 * fz - fz ./ abs(fz));
-    disp('Verifying holomorphicity for recovered g...')
-    g_recovered_error = check_holomorphicity(F, V, g_recovered);
-    set(g_Deform(gid).deformed_map,'FaceVertexCData',g_recovered_error);
+    g_recovered_error = check_holomorphicity(F, V, g_recovered, 'full');
+    set(g_Deform(gid).tsh,'FaceVertexCData',g_recovered_error);
     
-    txt = strcat(['Elastic energy: ' ...
-        num2str(elastic_energy(V, F, fz, fzbar))]);
-    set(g_Deform(gid).elastic_energy_text,'String',txt);
+    % set(g_Deform(gid).deformed_map,'FaceVertexCData',g_recovered_error);
+    
+    g_Deform(gid).elastic_energy_text.String = ...
+        strcat(['elastic energy: ' num2str(elastic_energy(V, F, fz, fzbar))]);
       
     if(show_euler_lagrange)
         disp('Verifying Euler-Lagrange equation...')
-        [divR, laplacian_of_f, euler_lagrange_error] = verify_euler_lagrange_eq(F, V, f);
+        [divR, laplacian_of_f, euler_lagrange_error, interior_rmse] = ...
+            verify_euler_lagrange_eq(F, V, f);
         set(g_Deform(gid).tsh,'FaceVertexCData',euler_lagrange_error);
         set(g_Deform(gid).divR,'FaceVertexCData',abs(divR));
         set(g_Deform(gid).laplacian_of_f,'FaceVertexCData',abs(laplacian_of_f));
+        g_Deform(gid).elasticity_error.String = ...
+            strcat(['elasticity error: ' num2str(interior_rmse)]);
     end
 
     % Update plots for stress tensor
     if(show_stress_tensor)
         set(g_Deform(gid).stress_real,'FaceVertexCData',real(g));
         set(g_Deform(gid).stress_imag,'FaceVertexCData',imag(g));   
+    end
+    
+    if(show_fz)
+        set(g_Deform(gid).fz,'FaceVertexCData',abs(fz));
     end
    
   end

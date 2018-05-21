@@ -1,13 +1,18 @@
-function [ error ] = check_holomorphicity( F, V, f )
+function [ error ] = check_holomorphicity( F, V, f, varargin )
 % Check the curl of [real(f) -imag(f)] and the curl of [imag(f) real(f)]
 E = expand_faces_to_edges(F);
 h_on_edges = 0.5 * (f(E(:,1),:) + f(E(:,2),:));
 curl1 = compute_curl(F, V, [real(h_on_edges) -imag(h_on_edges)]);
 curl2 = compute_curl(F, V, [imag(h_on_edges) real(h_on_edges)]);
-disp(['Curl of corresponding vector fields: ', num2str(rmse(curl1)), ...
-    ' ', num2str(rmse(curl2)), ...
-    ' average: ', num2str(mean([rmse(curl1), rmse(curl2)]))]);
-error = 0.5*abs(curl1) + 0.5*abs(curl2);
+%disp(['Curl of corresponding vector fields: ', num2str(rmse(curl1)), ...
+%    ' ', num2str(rmse(curl2)), ...
+%    ' average: ', num2str(mean([rmse(curl1), rmse(curl2)]))]);
+error = mean([rmse(curl1), rmse(curl2)]);
+if nargin >= 4 
+    if varargin{1} == 'full'
+        error = 0.5*abs(curl1) + 0.5*abs(curl2);
+    end
+end
 
 % Check the relative error in holomorphicity (how far f is from being
 % holomorphic)
